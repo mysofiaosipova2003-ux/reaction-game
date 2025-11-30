@@ -1,0 +1,26 @@
+{
+  "name": "Реакция - DVD Заставка",
+  "short_name": "Реакция",
+  "description": "Не дай логотипу DVD достичь углов экрана! Офисная игра на реакцию.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fef3c7",
+  "theme_color": "#78716c",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
+</code>
+
