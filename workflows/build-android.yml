@@ -1,0 +1,94 @@
+name: Build Android APK for RuStore
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build web app
+      run: npm run build
+
+    - name: Setup Capacitor
+      run: |
+        npx cap add android || echo "Android already added"
+        npx cap sync
+
+    - name: Create keystore directory
+      run: mkdir -p android/keystores
+
+    - name: Generate release keystore
+      run: |
+        keytool -genkey -v \
+          -keystore android/keystores/rustore-release.keystore \
+          -alias rustore-key \
+          -keyalg RSA \
+          -keysize 2048 \
+          -validity 10000 \
+          -storepass rustore2024secure \
+          -keypass rustore2024secure \
+          -dname "CN=Reaction Game, OU=Mobile Games, O=Game Studio, L=Moscow, ST=Moscow, C=RU"
+
+    - name: Configure signing in build.gradle
+      run: |
+        sed -i '/android {/a\    signingConfigs {\n        release {\n            storeFile file("../keystores/rustore-release.keystore")\n            storePassword "rustore2024secure"\n            keyAlias "rustore-key"\n            keyPassword "rustore2024secure"\n        }\n    }' android/app/build.gradle
+        sed -i 's/buildTypes {/buildTypes {\n        release {\n            signingConfig signingConfigs.release\n            minifyEnabled false\n        }/' android/app/build.gradle
+
+    - name: Update version for RuStore
+      run: |
+        sed -i 's/versionCode 1/versionCode 100/' android/app/build.gradle
+        sed -i 's/versionName "1.0"/versionName "1.0.0"/' android/app/build.gradle
+
+    - name: Build signed APK
+      run: |
+        cd android
+        chmod +x ./gradlew
+        ./gradlew assembleRelease --stacktrace
+
+    - name: Rename APK
+      run: |
+        cp android/app/build/outputs/apk/release/app-release.apk reaction-game-rustore.apk
+        ls -lh reaction-game-rustore.apk
+
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: reaction-game-rustore
+        path: reaction-game-rustore.apk
+        retention-days: 90
+
+    - name: Build summary
+      run: |
+        echo "✅ APK ГОТОВ!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📱 **Файл:** reaction-game-rustore.apk" >> $GITHUB_STEP_SUMMARY
+        echo "📦 **Package:** com.dunder.reaction" >> $GITHUB_STEP_SUMMARY
+        echo "🎮 **Приложение:** Реакция - DVD Заставка" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Размер:** $(ls -lh reaction-game-rustore.apk | awk '{print $5}')" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📤 Скачай из секции Artifacts и загрузи в RuStore!" >> $GITHUB_STEP_SUMMARY
